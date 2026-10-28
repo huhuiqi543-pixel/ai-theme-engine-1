@@ -1,0 +1,969 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI Theme Engine - 智能 UI 视觉主题生成器</title>
+  <style>
+    /* 全局基础重置 */
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "PingFang SC", "Hiragino Sans GB", "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+      background-color: #0f172a;
+      color: #f8fafc;
+      height: 100vh;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    /* 顶部导航条 */
+    header {
+      height: 54px;
+      background: #1e293b;
+      border-bottom: 1px solid #334155;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 20px;
+      flex-shrink: 0;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-weight: 700;
+      font-size: 16px;
+      letter-spacing: 0.5px;
+    }
+
+    .brand-badge {
+      background: linear-gradient(135deg, #6366f1, #a855f7);
+      padding: 2px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      font-weight: 600;
+      text-transform: uppercase;
+    }
+
+    .header-actions {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+    }
+
+    .btn-reset {
+      background: #334155;
+      color: #e2e8f0;
+      border: 1px solid #475569;
+      padding: 6px 14px;
+      border-radius: 6px;
+      font-size: 13px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-reset:hover {
+      background: #475569;
+    }
+
+    /* 三栏主体容器 */
+    .app-container {
+      display: grid;
+      grid-template-columns: 280px 320px 1fr;
+      flex: 1;
+      height: calc(100vh - 54px);
+      overflow: hidden;
+    }
+
+    /* 通用面板样式 */
+    .panel {
+      border-right: 1px solid #334155;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      overflow-y: auto;
+      background: #0f172a;
+    }
+
+    .panel-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: #94a3b8;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* ===================================================
+       左侧：操作与上传区
+       =================================================== */
+    .upload-zone {
+      border: 2px dashed #475569;
+      border-radius: 12px;
+      padding: 24px 12px;
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: #1e293b;
+      position: relative;
+    }
+
+    .upload-zone:hover {
+      border-color: #6366f1;
+      background: #1e293b88;
+    }
+
+    .upload-zone input {
+      position: absolute;
+      top: 0; left: 0; width: 100%; height: 100%;
+      opacity: 0;
+      cursor: pointer;
+    }
+
+    .image-preview-container {
+      width: 100%;
+      height: 160px;
+      border-radius: 8px;
+      background: #020617;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      border: 1px solid #334155;
+    }
+
+    .image-preview-container img {
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+    }
+
+    .preset-title {
+      font-size: 12px;
+      color: #64748b;
+      margin-bottom: 8px;
+    }
+
+    .preset-list {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 8px;
+    }
+
+    .preset-btn {
+      height: 48px;
+      border-radius: 6px;
+      border: 1px solid #334155;
+      cursor: pointer;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      transition: transform 0.15s, border-color 0.15s;
+    }
+
+    .preset-btn:hover {
+      transform: translateY(-2px);
+      border-color: #818cf8;
+    }
+
+    .preset-btn span {
+      position: absolute;
+      bottom: 2px;
+      left: 0; right: 0;
+      font-size: 9px;
+      background: rgba(0,0,0,0.65);
+      text-align: center;
+      padding: 1px 0;
+      border-radius: 0 0 5px 5px;
+    }
+
+    .btn-action {
+      background: #4f46e5;
+      color: white;
+      border: none;
+      padding: 11px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      transition: background 0.2s, transform 0.1s;
+    }
+
+    .btn-action:hover {
+      background: #4338ca;
+    }
+
+    .btn-action:disabled {
+      background: #334155;
+      color: #64748b;
+      cursor: not-allowed;
+    }
+
+    /* ===================================================
+       中间：分析与特征区
+       =================================================== */
+    .analysis-placeholder {
+      border: 1px dashed #334155;
+      border-radius: 8px;
+      padding: 30px 16px;
+      text-align: center;
+      color: #64748b;
+      font-size: 13px;
+      line-height: 1.6;
+    }
+
+    .tag-cloud {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 6px;
+    }
+
+    .style-tag {
+      background: #1e293b;
+      border: 1px solid #475569;
+      color: #cbd5e1;
+      padding: 5px 10px;
+      border-radius: 20px;
+      font-size: 12px;
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+    }
+
+    .color-swatches {
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 6px;
+      margin-top: 6px;
+    }
+
+    .color-swatch-item {
+      height: 38px;
+      border-radius: 6px;
+      border: 1px solid rgba(255,255,255,0.1);
+      position: relative;
+    }
+
+    .analysis-card {
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 8px;
+      padding: 12px;
+      font-size: 13px;
+    }
+
+    .analysis-card-title {
+      font-size: 12px;
+      font-weight: 600;
+      color: #94a3b8;
+      margin-bottom: 8px;
+    }
+
+    .preset-theme-selector {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+
+    .theme-radio-btn {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      background: #1e293b;
+      border: 1px solid #334155;
+      padding: 10px 12px;
+      border-radius: 8px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: all 0.15s;
+    }
+
+    .theme-radio-btn.active {
+      border-color: #6366f1;
+      background: #1e293b;
+      box-shadow: 0 0 0 1px #6366f1;
+    }
+
+    /* ===================================================
+       右侧：预览与对比区
+       =================================================== */
+    .preview-panel {
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      background: #020617;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .preview-toolbar {
+      height: 48px;
+      background: #111827;
+      border-bottom: 1px solid #1f2937;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 16px;
+      flex-shrink: 0;
+    }
+
+    .toggle-group {
+      display: flex;
+      background: #1f2937;
+      padding: 2px;
+      border-radius: 6px;
+    }
+
+    .toggle-btn {
+      padding: 5px 12px;
+      border-radius: 4px;
+      font-size: 12px;
+      border: none;
+      background: transparent;
+      color: #9ca3af;
+      cursor: pointer;
+    }
+
+    .toggle-btn.active {
+      background: #374151;
+      color: #fff;
+      font-weight: 600;
+    }
+
+    .workspaces-container {
+      flex: 1;
+      display: flex;
+      gap: 16px;
+      padding: 16px;
+      overflow: auto;
+      align-items: flex-start;
+      justify-content: center;
+    }
+
+    .workspace-wrapper {
+      flex: 1;
+      max-width: 900px;
+      min-width: 680px;
+      transition: all 0.25s ease;
+    }
+
+    .workspace-label {
+      font-size: 11px;
+      color: #6b7280;
+      margin-bottom: 6px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      font-weight: 600;
+    }
+
+    /* ===================================================
+       CSS 变量主题系统
+       =================================================== */
+    .pm-app {
+      --fixed-padding: 20px;
+      --fixed-gap: 16px;
+      --fixed-nav-height: 52px;
+      --fixed-sidebar-width: 170px;
+
+      --theme-bg: #f8fafc;
+      --theme-surface: #ffffff;
+      --theme-border: #e2e8f0;
+      --theme-text-main: #0f172a;
+      --theme-text-muted: #64748b;
+      --theme-primary: #4f46e5;
+      --theme-primary-hover: #4338ca;
+      --theme-primary-text: #ffffff;
+      --theme-radius: 8px;
+      --theme-shadow: 0 1px 3px rgba(0,0,0,0.06), 0 1px 2px rgba(0,0,0,0.04);
+      --theme-badge-success-bg: #dcfce7;
+      --theme-badge-success-text: #15803d;
+      --theme-badge-warn-bg: #fef9c3;
+      --theme-badge-warn-text: #a16207;
+      --theme-backdrop-blur: none;
+      --theme-surface-border-top: none;
+
+      background: var(--theme-bg);
+      border-radius: var(--theme-radius);
+      border: 1px solid var(--theme-border);
+      box-shadow: var(--theme-shadow);
+      color: var(--theme-text-main);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      min-height: 540px;
+    }
+
+    .theme-warm-retro {
+      --theme-bg: #f4ede2;
+      --theme-surface: #fdfbf7;
+      --theme-border: #dfd4c0;
+      --theme-text-main: #2d261e;
+      --theme-text-muted: #796e62;
+      --theme-primary: #b45309;
+      --theme-primary-hover: #92400e;
+      --theme-primary-text: #ffffff;
+      --theme-radius: 4px;
+      --theme-shadow: 0 4px 14px rgba(78, 64, 43, 0.08);
+      --theme-badge-success-bg: #e6edd9;
+      --theme-badge-success-text: #3c5421;
+      --theme-badge-warn-bg: #f5e7c8;
+      --theme-badge-warn-text: #78480d;
+      --theme-backdrop-blur: none;
+      --theme-surface-border-top: none;
+    }
+
+    .theme-glass {
+      --theme-bg: radial-gradient(circle at top left, #1e1b4b, #0f172a 70%);
+      --theme-surface: rgba(255, 255, 255, 0.07);
+      --theme-border: rgba(255, 255, 255, 0.12);
+      --theme-text-main: #f8fafc;
+      --theme-text-muted: #94a3b8;
+      --theme-primary: #06b6d4;
+      --theme-primary-hover: #0891b2;
+      --theme-primary-text: #082f49;
+      --theme-radius: 14px;
+      --theme-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+      --theme-badge-success-bg: rgba(16, 185, 129, 0.2);
+      --theme-badge-success-text: #34d399;
+      --theme-badge-warn-bg: rgba(245, 158, 11, 0.2);
+      --theme-badge-warn-text: #fbbf24;
+      --theme-backdrop-blur: blur(14px);
+      --theme-surface-border-top: 1px solid rgba(255, 255, 255, 0.22);
+    }
+
+    .pm-nav {
+      height: var(--fixed-nav-height);
+      background: var(--theme-surface);
+      border-bottom: 1px solid var(--theme-border);
+      backdrop-filter: var(--theme-backdrop-blur);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--fixed-padding);
+    }
+
+    .pm-logo {
+      font-weight: 700;
+      font-size: 14px;
+      color: var(--theme-text-main);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pm-logo-dot {
+      width: 10px;
+      height: 10px;
+      background: var(--theme-primary);
+      border-radius: 50%;
+    }
+
+    .pm-btn-primary {
+      background: var(--theme-primary);
+      color: var(--theme-primary-text);
+      border: none;
+      padding: 7px 14px;
+      border-radius: var(--theme-radius);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      box-shadow: 0 1px 2px rgba(0,0,0,0.1);
+      transition: background 0.15s;
+    }
+
+    .pm-btn-primary:hover {
+      background: var(--theme-primary-hover);
+    }
+
+    .pm-body {
+      display: flex;
+      flex: 1;
+    }
+
+    .pm-sidebar {
+      width: var(--fixed-sidebar-width);
+      border-right: 1px solid var(--theme-border);
+      background: var(--theme-surface);
+      backdrop-filter: var(--theme-backdrop-blur);
+      padding: var(--fixed-padding) 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .pm-menu-item {
+      padding: 8px 12px;
+      border-radius: var(--theme-radius);
+      font-size: 13px;
+      color: var(--theme-text-muted);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .pm-menu-item.active {
+      background: var(--theme-border);
+      color: var(--theme-text-main);
+      font-weight: 600;
+    }
+
+    .pm-content {
+      flex: 1;
+      padding: var(--fixed-padding);
+      display: flex;
+      flex-direction: column;
+      gap: var(--fixed-gap);
+    }
+
+    .pm-stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--fixed-gap);
+    }
+
+    .pm-stat-card {
+      background: var(--theme-surface);
+      border: 1px solid var(--theme-border);
+      border-top: var(--theme-surface-border-top);
+      border-radius: var(--theme-radius);
+      padding: 14px;
+      box-shadow: var(--theme-shadow);
+      backdrop-filter: var(--theme-backdrop-blur);
+    }
+
+    .pm-stat-title {
+      font-size: 12px;
+      color: var(--theme-text-muted);
+    }
+
+    .pm-stat-value {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--theme-text-main);
+      margin-top: 4px;
+    }
+
+    .pm-table-card {
+      background: var(--theme-surface);
+      border: 1px solid var(--theme-border);
+      border-top: var(--theme-surface-border-top);
+      border-radius: var(--theme-radius);
+      box-shadow: var(--theme-shadow);
+      backdrop-filter: var(--theme-backdrop-blur);
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+    }
+
+    .pm-table-header {
+      padding: 12px 16px;
+      border-bottom: 1px solid var(--theme-border);
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--theme-text-main);
+    }
+
+    .pm-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+      text-align: left;
+    }
+
+    .pm-table th {
+      padding: 10px 16px;
+      color: var(--theme-text-muted);
+      border-bottom: 1px solid var(--theme-border);
+      font-weight: 500;
+    }
+
+    .pm-table td {
+      padding: 12px 16px;
+      color: var(--theme-text-main);
+      border-bottom: 1px solid var(--theme-border);
+    }
+
+    .pm-badge {
+      display: inline-block;
+      padding: 3px 8px;
+      border-radius: var(--theme-radius);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .pm-badge-success {
+      background: var(--theme-badge-success-bg);
+      color: var(--theme-badge-success-text);
+    }
+
+    .pm-badge-warn {
+      background: var(--theme-badge-warn-bg);
+      color: var(--theme-badge-warn-text);
+    }
+
+    .spinner {
+      border: 2px solid rgba(255,255,255,0.2);
+      border-top-color: #fff;
+      border-radius: 50%;
+      width: 14px;
+      height: 14px;
+      animation: spin 0.8s linear infinite;
+      display: inline-block;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+  </style>
+</head>
+<body>
+
+  <header>
+    <div class="brand">
+      <span>AI Theme Engine</span>
+      <span class="brand-badge">Demo</span>
+    </div>
+    <div class="header-actions">
+      <button class="btn-reset" onclick="resetToOriginal()">重置为默认主题</button>
+    </div>
+  </header>
+
+  <div class="app-container">
+
+    <div class="panel">
+      <div class="panel-title">① 参考风格图片</div>
+
+      <div class="upload-zone">
+        <input type="file" id="fileInput" accept="image/*" onchange="handleImageUpload(event)">
+        <div style="font-size: 20px; margin-bottom: 6px;">📷</div>
+        <div style="font-size: 13px; font-weight: 500;">点击上传参考图片</div>
+        <div style="font-size: 11px; color: #94a3b8; margin-top: 2px;">支持 JPG / PNG / WebP</div>
+      </div>
+
+      <div>
+        <div class="preset-title">或选用内置风格样片：</div>
+        <div class="preset-list">
+          <div class="preset-btn" style="background-color: #c27847; background-image: linear-gradient(135deg, #d97706, #78350f);" onclick="loadPresetImage('retro')">
+            <span>温暖复古</span>
+          </div>
+          <div class="preset-btn" style="background-color: #0f766e; background-image: linear-gradient(135deg, #06b6d4, #1e1b4b);" onclick="loadPresetImage('glass')">
+            <span>冷艳暗夜</span>
+          </div>
+          <div class="preset-btn" style="background-color: #3b82f6; background-image: linear-gradient(135deg, #6366f1, #3b82f6);" onclick="loadPresetImage('saas')">
+            <span>极简商务</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="image-preview-container">
+        <img id="imagePreview" src="data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='200' height='150' fill='%231e293b'><rect width='100%' height='100%'/><text x='50%' y='50%' fill='%2364748b' text-anchor='middle' dominant-baseline='middle' font-size='12'>未选择参考图片</text></svg>" alt="Preview">
+      </div>
+
+      <button id="btnAnalyze" class="btn-action" onclick="startAnalysis()">
+        <span>✨ 开始分析视觉风格</span>
+      </button>
+    </div>
+
+    <div class="panel">
+      <div class="panel-title">② 视觉属性与主题生成</div>
+
+      <div id="analysisResultPlaceholder" class="analysis-placeholder">
+        请在左侧上传或选择一张图片，<br>点击「开始分析视觉风格」。
+      </div>
+
+      <div id="analysisResultContent" style="display: none; flex-direction: column; gap: 14px;">
+        <div class="analysis-card">
+          <div class="analysis-card-title">提取的核心色板 (Palette)</div>
+          <div class="color-swatches" id="colorPalette"></div>
+        </div>
+
+        <div class="analysis-card">
+          <div class="analysis-card-title">视觉特征解析</div>
+          <div class="tag-cloud" id="tagCloud"></div>
+        </div>
+
+        <div class="analysis-card">
+          <div class="analysis-card-title">匹配的主题方案</div>
+          <div class="preset-theme-selector">
+            <div class="theme-radio-btn active" id="themeOpt-custom" onclick="selectTheme('custom')">
+              <input type="radio" name="theme" checked>
+              <span>🌟 根据图片生成的专属主题</span>
+            </div>
+            <div class="theme-radio-btn" id="themeOpt-retro" onclick="selectTheme('retro')">
+              <input type="radio" name="theme">
+              <span>☕ 温暖复古 (低饱和/柔和纸感)</span>
+            </div>
+            <div class="theme-radio-btn" id="themeOpt-glass" onclick="selectTheme('glass')">
+              <input type="radio" name="theme">
+              <span>🔮 玻璃质感 (磨砂深色/层次通透)</span>
+            </div>
+          </div>
+        </div>
+
+        <button class="btn-action" style="background: #10b981;" onclick="applyTheme()">
+          <span>🎨 应用主题到工作台</span>
+        </button>
+      </div>
+    </div>
+
+    <div class="panel preview-panel">
+      <div class="preview-toolbar">
+        <span style="font-size: 13px; font-weight: 500; color: #94a3b8;">效果预览区（右侧 UI 结构完全锁定）</span>
+        <div class="toggle-group">
+          <button id="btnSingleView" class="toggle-btn active" onclick="setViewMode('single')">单一主题</button>
+          <button id="btnCompareView" class="toggle-btn" onclick="setViewMode('compare')">并排对比</button>
+        </div>
+      </div>
+
+      <div class="workspaces-container" id="workspacesContainer">
+        
+        <div class="workspace-wrapper" id="originalWorkspaceWrapper" style="display: none;">
+          <div class="workspace-label">原始主题 (Original UI)</div>
+          <div class="pm-app">
+            <div class="pm-nav">
+              <div class="pm-logo"><div class="pm-logo-dot"></div> Workspace Pro</div>
+              <button class="pm-btn-primary">+ 新建项目</button>
+            </div>
+            <div class="pm-body">
+              <div class="pm-sidebar">
+                <div class="pm-menu-item active">📊 概览仪表盘</div>
+                <div class="pm-menu-item">📁 项目清单</div>
+                <div class="pm-menu-item">👥 团队协作</div>
+                <div class="pm-menu-item">⚙️ 系统设置</div>
+              </div>
+              <div class="pm-content">
+                <div class="pm-stats-grid">
+                  <div class="pm-stat-card"><div class="pm-stat-title">进行中任务</div><div class="pm-stat-value">12</div></div>
+                  <div class="pm-stat-card"><div class="pm-stat-title">本周交付率</div><div class="pm-stat-value">94.8%</div></div>
+                  <div class="pm-stat-card"><div class="pm-stat-title">活跃成员</div><div class="pm-stat-value">6</div></div>
+                </div>
+                <div class="pm-table-card">
+                  <div class="pm-table-header">重点项目里程碑</div>
+                  <table class="pm-table">
+                    <thead><tr><th>项目名称</th><th>负责人</th><th>状态</th></tr></thead>
+                    <tbody>
+                      <tr><td>移动客户端 3.0 重构</td><td>Alex</td><td><span class="pm-badge pm-badge-success">正常推进</span></td></tr>
+                      <tr><td>支付风控系统升级</td><td>Elena</td><td><span class="pm-badge pm-badge-warn">审核中</span></td></tr>
+                      <tr><td>设计规范视觉焕新</td><td>Sarah</td><td><span class="pm-badge pm-badge-success">已发布</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="workspace-wrapper" id="activeWorkspaceWrapper">
+          <div class="workspace-label" id="activeWorkspaceLabel">当前应用主题 (Current UI)</div>
+          <div class="pm-app" id="targetApp">
+            <div class="pm-nav">
+              <div class="pm-logo"><div class="pm-logo-dot"></div> Workspace Pro</div>
+              <button class="pm-btn-primary">+ 新建项目</button>
+            </div>
+            <div class="pm-body">
+              <div class="pm-sidebar">
+                <div class="pm-menu-item active">📊 概览仪表盘</div>
+                <div class="pm-menu-item">📁 项目清单</div>
+                <div class="pm-menu-item">👥 团队协作</div>
+                <div class="pm-menu-item">⚙️ 系统设置</div>
+              </div>
+              <div class="pm-content">
+                <div class="pm-stats-grid">
+                  <div class="pm-stat-card"><div class="pm-stat-title">进行中任务</div><div class="pm-stat-value">12</div></div>
+                  <div class="pm-stat-card"><div class="pm-stat-title">本周交付率</div><div class="pm-stat-value">94.8%</div></div>
+                  <div class="pm-stat-card"><div class="pm-stat-title">活跃成员</div><div class="pm-stat-value">6</div></div>
+                </div>
+                <div class="pm-table-card">
+                  <div class="pm-table-header">重点项目里程碑</div>
+                  <table class="pm-table">
+                    <thead><tr><th>项目名称</th><th>负责人</th><th>状态</th></tr></thead>
+                    <tbody>
+                      <tr><td>移动客户端 3.0 重构</td><td>Alex</td><td><span class="pm-badge pm-badge-success">正常推进</span></td></tr>
+                      <tr><td>支付风控系统升级</td><td>Elena</td><td><span class="pm-badge pm-badge-warn">审核中</span></td></tr>
+                      <tr><td>设计规范视觉焕新</td><td>Sarah</td><td><span class="pm-badge pm-badge-success">已发布</span></td></tr>
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let currentSelectedTheme = 'custom';
+
+    const PRESETS = {
+      retro: {
+        palette: ['#f4ede2', '#dfd4c0', '#b45309', '#796e62', '#2d261e'],
+        tags: ['暖色调', '低饱和度', '纸张触感', '柔和微阴影', '人文经典'],
+        themeKey: 'retro'
+      },
+      glass: {
+        palette: ['#0f172a', '#1e1b4b', '#06b6d4', '#94a3b8', '#f8fafc'],
+        tags: ['暗色调', '高对比发光', '磨砂玻璃', '通透纵深', '科技未来'],
+        themeKey: 'glass'
+      },
+      saas: {
+        palette: ['#f8fafc', '#ffffff', '#4f46e5', '#64748b', '#0f172a'],
+        tags: ['冷色中性', '高清晰度', '克制微圆角', '扁平明快', '高效工作'],
+        themeKey: 'default'
+      }
+    };
+
+    let activeData = PRESETS.retro;
+
+    function handleImageUpload(e) {
+      const file = e.target.files[0];
+      if (!file) return;
+
+      const reader = new FileReader();
+      reader.onload = function(evt) {
+        document.getElementById('imagePreview').src = evt.target.result;
+        activeData = {
+          palette: ['#fcf0e4', '#e2cbb4', '#c25e37', '#6a5142', '#231815'],
+          tags: ['图像提取主色', '温暖赭石', '自然柔光', '平滑圆角', '有机质感'],
+          themeKey: 'custom'
+        };
+      };
+      reader.readAsDataURL(file);
+    }
+
+    function loadPresetImage(type) {
+      activeData = PRESETS[type];
+      const svg = `<svg xmlns='http://www.w3.org/2000/svg' width='300' height='200'>
+        <defs><linearGradient id='g' x1='0%' y1='0%' x2='100%' y2='100%'>
+        <stop offset='0%' stop-color='${activeData.palette[2]}'/>
+        <stop offset='100%' stop-color='${activeData.palette[1]}'/>
+        </linearGradient></defs>
+        <rect width='100%' height='100%' fill='url(#g)'/>
+      </svg>`;
+      document.getElementById('imagePreview').src = 'data:image/svg+xml;utf8,' + encodeURIComponent(svg);
+    }
+
+    function startAnalysis() {
+      const btn = document.getElementById('btnAnalyze');
+      btn.disabled = true;
+      btn.innerHTML = `<span class="spinner"></span> 正在解析图像色彩与风格...`;
+
+      setTimeout(() => {
+        btn.disabled = false;
+        btn.innerHTML = `<span>✨ 开始分析视觉风格</span>`;
+        
+        document.getElementById('analysisResultPlaceholder').style.display = 'none';
+        const resContent = document.getElementById('analysisResultContent');
+        resContent.style.display = 'flex';
+
+        const swatchContainer = document.getElementById('colorPalette');
+        swatchContainer.innerHTML = '';
+        activeData.palette.forEach(color => {
+          const div = document.createElement('div');
+          div.className = 'color-swatch-item';
+          div.style.backgroundColor = color;
+          div.title = color;
+          swatchContainer.appendChild(div);
+        });
+
+        const tagContainer = document.getElementById('tagCloud');
+        tagContainer.innerHTML = '';
+        activeData.tags.forEach(tag => {
+          const span = document.createElement('span');
+          span.className = 'style-tag';
+          span.textContent = tag;
+          tagContainer.appendChild(span);
+        });
+
+        if (activeData.themeKey === 'glass') {
+          selectTheme('glass');
+        } else if (activeData.themeKey === 'retro') {
+          selectTheme('retro');
+        } else {
+          selectTheme('custom');
+        }
+
+      }, 700);
+    }
+
+    function selectTheme(type) {
+      currentSelectedTheme = type;
+      ['custom', 'retro', 'glass'].forEach(t => {
+        const el = document.getElementById('themeOpt-' + t);
+        if (el) {
+          if (t === type) {
+            el.classList.add('active');
+            el.querySelector('input').checked = true;
+          } else {
+            el.classList.remove('active');
+            el.querySelector('input').checked = false;
+          }
+        }
+      });
+    }
+
+    function applyTheme() {
+      const app = document.getElementById('targetApp');
+      app.className = 'pm-app';
+      app.removeAttribute('style');
+
+      if (currentSelectedTheme === 'retro') {
+        app.classList.add('theme-warm-retro');
+      } else if (currentSelectedTheme === 'glass') {
+        app.classList.add('theme-glass');
+      } else if (currentSelectedTheme === 'custom') {
+        app.style.setProperty('--theme-bg', activeData.palette[0]);
+        app.style.setProperty('--theme-surface', '#ffffff');
+        app.style.setProperty('--theme-border', activeData.palette[1]);
+        app.style.setProperty('--theme-primary', activeData.palette[2]);
+        app.style.setProperty('--theme-primary-hover', activeData.palette[3]);
+        app.style.setProperty('--theme-text-main', activeData.palette[4]);
+        app.style.setProperty('--theme-radius', '10px');
+        app.style.setProperty('--theme-shadow', '0 6px 20px rgba(0,0,0,0.06)');
+      }
+    }
+
+    function resetToOriginal() {
+      const app = document.getElementById('targetApp');
+      app.className = 'pm-app';
+      app.removeAttribute('style');
+    }
+
+    function setViewMode(mode) {
+      const origWrapper = document.getElementById('originalWorkspaceWrapper');
+      const btnSingle = document.getElementById('btnSingleView');
+      const btnCompare = document.getElementById('btnCompareView');
+
+      if (mode === 'compare') {
+        origWrapper.style.display = 'block';
+        btnCompare.classList.add('active');
+        btnSingle.classList.remove('active');
+      } else {
+        origWrapper.style.display = 'none';
+        btnSingle.classList.add('active');
+        btnCompare.classList.remove('active');
+      }
+    }
+
+    loadPresetImage('retro');
+  </script>
+</body>
+</html>
